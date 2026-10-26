@@ -1,0 +1,17 @@
+{
+  "appId": "com.signaliptv.app",
+  "appName": "Signal IPTV",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true,
+    "adjustMarginsForEdgeToEdge": "force",
+    "backgroundColor": "#0f1115"
+  },
+  "plugins": {
+    "CapacitorHttp": { "enabled": false }
+  }
+}

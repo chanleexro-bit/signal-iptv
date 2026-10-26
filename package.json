@@ -1,0 +1,21 @@
+{
+  "name": "signal-iptv",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Signal IPTV – M3U live TV player with TV guide, packaged for Android with Capacitor",
+  "scripts": {
+    "copy-hls": "node -e \"require('fs').copyFileSync('node_modules/hls.js/dist/hls.min.js','www/hls.min.js')\"",
+    "android:init": "npm run copy-hls && npx cap add android && npx capacitor-assets generate --android --iconBackgroundColor '#0f1115' --iconBackgroundColorDark '#0f1115' --splashBackgroundColor '#0f1115' --splashBackgroundColorDark '#0f1115'",
+    "android:sync": "npm run copy-hls && npx cap sync android",
+    "android:open": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "hls.js": "^1.5.13"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^7.0.0"
+  }
+}

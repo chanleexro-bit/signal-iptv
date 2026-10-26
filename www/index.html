@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<title>Signal IPTV</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<!-- In the Android app hls.min.js is bundled next to this file; in a desktop browser it falls back to the CDN. -->
+<script src="hls.min.js"></script>
+<script>if(!window.Hls)document.write('<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"><\/script>')</script>
+<style>
+/* Layout: control-room split. Channel guide rail on the left, monitor + on-air schedule on the right; stacks on phones. */
+:root{
+  --bg:#f3f4f6; --panel:#ffffff; --line:#d9dce3; --fg:#14161c; --muted:#5d6472;
+  --accent:#e0412b; --accent-ink:#ffffff; --live:#e0412b; --hover:#eceef3; --sel:#fde8e4; --track:#e3e5ea;
+  --screen:#0b0c0f;
+  --display:"Archivo",system-ui,sans-serif; --body:"Archivo",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0f1115; --panel:#171a20; --line:#272b34; --fg:#e9ebf0; --muted:#8a91a0;
+  --accent:#ff5a3f; --accent-ink:#140a08; --live:#ff5a3f; --hover:#1f232b; --sel:#2b1915; --track:#2a2e37; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --panel:#171a20; --line:#272b34; --fg:#e9ebf0; --muted:#8a91a0;
+  --accent:#ff5a3f; --accent-ink:#140a08; --live:#ff5a3f; --hover:#1f232b; --sel:#2b1915; --track:#2a2e37; color-scheme:dark }
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--body);display:flex;flex-direction:column;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+a{color:var(--accent)}
+
+header{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding-block:12px;border-bottom:1px solid var(--line)}
+.brand{font-family:var(--display);font-weight:800;font-stretch:120%;font-size:22px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px;margin-right:auto}
+.brand i{width:10px;height:10px;border-radius:50%;background:var(--live);box-shadow:0 0 0 4px color-mix(in srgb,var(--live) 25%,transparent)}
+.src{display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-width:0}
+select,input[type=text],input[type=search],input[type=url]{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-width:0;max-width:100%}
+#preset{max-width:min(320px,100%)}
+.btn{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 12px;cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+#customUrl{width:min(340px,100%)}
+
+main{flex:1;display:grid;grid-template-columns:minmax(270px,360px) 1fr;gap:16px;padding-block:16px;min-height:0}
+@media (max-width:820px){ main{grid-template-columns:1fr;grid-template-rows:auto auto} .stage{order:-1} #list{max-height:60vh} }
+
+.guide{display:flex;flex-direction:column;min-height:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.guide-head{display:flex;flex-direction:column;gap:8px;padding:12px;border-bottom:1px solid var(--line)}
+.tabs{display:flex;gap:4px}
+.tab{flex:1;background:none;border:1px solid transparent;border-radius:5px;padding:5px 6px;cursor:pointer;font-size:13px;color:var(--muted)}
+.tab[aria-selected=true]{border-color:var(--line);background:var(--hover);color:var(--fg);font-weight:600}
+.count{font:12px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+#list{list-style:none;margin:0;padding:4px;overflow-y:auto;flex:1;min-height:240px}
+#list li{display:grid;grid-template-columns:40px 1fr auto;gap:10px;align-items:center;padding:7px 8px;border-radius:6px;cursor:pointer}
+#list li:hover{background:var(--hover)}
+#list li.on{background:var(--sel)}
+#list li.on .nm{color:var(--accent)}
+.logo{width:40px;height:28px;border-radius:4px;background:var(--hover);display:grid;place-items:center;overflow:hidden;font:600 11px var(--mono);color:var(--muted)}
+.logo img{width:100%;height:100%;object-fit:contain}
+.nm{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.gp{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gp .now{color:var(--fg)}
+.bar{height:2px;background:var(--track);border-radius:2px;margin-top:4px;overflow:hidden}
+.bar span{display:block;height:100%;background:var(--accent)}
+.star{background:none;border:0;cursor:pointer;color:var(--muted);font-size:18px;padding:4px 6px;line-height:1}
+.star.fav{color:var(--accent)}
+.empty{padding:24px 16px;color:var(--muted);font-size:14px}
+
+.stage{display:flex;flex-direction:column;gap:12px;min-width:0;min-height:0;overflow-y:auto}
+.monitor{position:relative;background:var(--screen);border-radius:8px;aspect-ratio:16/9;max-width:100%;overflow:hidden;flex:none}
+video{width:100%;height:100%;display:block;background:var(--screen)}
+.overlay{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:24px;color:#cfd3dc;pointer-events:none}
+.overlay b{display:block;font-family:var(--display);font-stretch:115%;font-size:20px;color:#fff;margin-bottom:6px}
+.np{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
+.np h1{font-family:var(--display);font-weight:800;font-stretch:110%;font-size:24px;margin:0;text-wrap:balance;min-width:0;overflow-wrap:anywhere}
+.pill{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.pill.live{background:var(--live);border-color:var(--live);color:#fff}
+.pill.err{border-color:var(--accent);color:var(--accent)}
+.np .ctrls{margin-left:auto;display:flex;flex-wrap:wrap;gap:6px}
+
+.onair{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px}
+@media (max-width:620px){ .onair{grid-template-columns:1fr} }
+.label{font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.prog-title{font-family:var(--display);font-weight:700;font-stretch:105%;font-size:18px;margin:0 0 2px}
+.prog-time{font:12px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.prog-desc{font-size:14px;color:var(--muted);margin:8px 0 0;max-width:65ch}
+.onair .bar{height:4px;margin-top:8px}
+.sched{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.sched li{display:grid;grid-template-columns:4.2em 1fr;gap:10px;font-size:14px}
+.sched time{font:13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.meta{font:12px var(--mono);color:var(--muted);word-break:break-all}
+.note{font-size:13px;color:var(--muted);max-width:70ch;margin:0}
+.gstat{font:12px var(--mono);color:var(--muted)}
+
+dialog{border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--fg);padding:0;width:min(560px,calc(100vw - 32px));max-height:calc(100vh - 48px)}
+dialog::backdrop{background:rgb(0 0 0 / .5)}
+dialog form{display:flex;flex-direction:column;gap:14px;padding:18px;max-height:calc(100vh - 50px);overflow-y:auto}
+dialog h2{font-family:var(--display);font-stretch:115%;font-size:20px;margin:0}
+dialog fieldset{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;margin:0;min-width:0}
+dialog legend{font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:0 4px}
+dialog label.ck{display:flex;gap:8px;align-items:flex-start;font-size:14px;overflow-wrap:anywhere}
+dialog label.ck input{margin-top:3px}
+.row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+footer{padding-block:10px 14px;font-size:12px;color:var(--muted);border-top:1px solid var(--line)}
+kbd{font:11px var(--mono);border:1px solid var(--line);border-radius:3px;padding:0 4px}
+@media (pointer:coarse){ footer{display:none} }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><i></i>Signal IPTV</div>
+  <div class="src">
+    <select id="preset" aria-label="Playlist">
+      <optgroup label="Free services (TV guide included)">
+        <option value="https://i.mjh.nz/PlutoTV/us.m3u8">Pluto TV (US)</option>
+        <option value="https://i.mjh.nz/SamsungTVPlus/us.m3u8">Samsung TV Plus (US)</option>
+        <option value="https://i.mjh.nz/Plex/us.m3u8">Plex (US)</option>
+        <option value="https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8">Free-TV (worldwide)</option>
+      </optgroup>
+      <optgroup label="By category (iptv-org)">
+        <option value="https://iptv-org.github.io/iptv/categories/news.m3u">News</option>
+        <option value="https://iptv-org.github.io/iptv/categories/sports.m3u">Sports</option>
+        <option value="https://iptv-org.github.io/iptv/categories/movies.m3u">Movies</option>
+        <option value="https://iptv-org.github.io/iptv/categories/music.m3u">Music</option>
+        <option value="https://iptv-org.github.io/iptv/categories/kids.m3u">Kids</option>
+        <option value="https://iptv-org.github.io/iptv/categories/documentary.m3u">Documentary</option>
+        <option value="https://iptv-org.github.io/iptv/categories/entertainment.m3u">Entertainment</option>
+      </optgroup>
+      <optgroup label="By country (iptv-org)">
+        <option value="https://iptv-org.github.io/iptv/countries/us.m3u">United States</option>
+        <option value="https://iptv-org.github.io/iptv/countries/ca.m3u">Canada</option>
+        <option value="https://iptv-org.github.io/iptv/countries/uk.m3u">United Kingdom</option>
+        <option value="https://iptv-org.github.io/iptv/countries/au.m3u">Australia</option>
+        <option value="https://iptv-org.github.io/iptv/countries/in.m3u">India</option>
+      </optgroup>
+      <optgroup label="By language (iptv-org)">
+        <option value="https://iptv-org.github.io/iptv/languages/eng.m3u">English</option>
+        <option value="https://iptv-org.github.io/iptv/languages/spa.m3u">Spanish</option>
+        <option value="https://iptv-org.github.io/iptv/languages/fra.m3u">French</option>
+      </optgroup>
+      <optgroup label="Everything">
+        <option value="https://iptv-org.github.io/iptv/index.m3u">All iptv-org channels (large)</option>
+      </optgroup>
+      <option value="__custom">Custom M3U link…</option>
+    </select>
+    <input id="customUrl" type="url" placeholder="https://example.com/playlist.m3u" hidden aria-label="Custom M3U link">
+    <button class="btn primary" id="loadBtn">Load</button>
+    <label class="btn" for="fileIn">Open file</label>
+    <input id="fileIn" type="file" accept=".m3u,.m3u8,audio/x-mpegurl,application/vnd.apple.mpegurl,text/plain" hidden>
+    <button class="btn" id="guideBtn">TV guide</button>
+  </div>
+</header>
+
+<main>
+  <section class="guide" aria-label="Channel list">
+    <div class="guide-head">
+      <input id="q" type="search" placeholder="Search channels or shows" aria-label="Search channels or shows">
+      <select id="group" aria-label="Group"><option value="">All groups</option></select>
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" data-tab="all" aria-selected="true">Channels</button>
+        <button class="tab" role="tab" data-tab="fav" aria-selected="false">Favorites</button>
+        <button class="tab" role="tab" data-tab="recent" aria-selected="false">Recent</button>
+      </div>
+      <div class="count" id="count">—</div>
+    </div>
+    <ul id="list"><li class="empty" style="display:block">Loading playlist…</li></ul>
+  </section>
+
+  <section class="stage">
+    <div class="monitor">
+      <video id="v" controls playsinline></video>
+      <div class="overlay" id="ov"><div><b>Pick a channel</b>Choose from the list to start watching.</div></div>
+    </div>
+    <div class="np">
+      <span class="pill" id="status">Idle</span>
+      <h1 id="title">No channel</h1>
+      <div class="ctrls">
+        <button class="btn" id="prev" title="Previous channel">◀ Prev</button>
+        <button class="btn" id="next" title="Next channel">Next ▶</button>
+        <button class="btn" id="favBtn" title="Add to favorites">☆ Favorite</button>
+      </div>
+    </div>
+
+    <div class="onair" id="onair">
+      <div>
+        <p class="label">On now</p>
+        <div id="nowBox"><p class="prog-desc" style="margin:0">Pick a channel to see what’s on.</p></div>
+      </div>
+      <div>
+        <p class="label">Up next</p>
+        <ul class="sched" id="nextList"><li style="display:block;color:var(--muted)">—</li></ul>
+      </div>
+    </div>
+
+    <div class="gstat" id="gstat">TV guide: not loaded</div>
+    <div class="meta" id="meta"></div>
+    <p class="note">Channels come from public collections of free, legal broadcasts (<a href="https://github.com/iptv-org/iptv" target="_blank" rel="noopener">iptv-org</a>, <a href="https://github.com/Free-TV/IPTV" target="_blank" rel="noopener">Free-TV</a>, <a href="https://i.mjh.nz" target="_blank" rel="noopener">i.mjh.nz</a>). Some streams are offline or geo-blocked; if one fails, try the next channel.</p>
+  </section>
+</main>
+
+<footer>Keys: <kbd>↑</kbd>/<kbd>↓</kbd> or <kbd>N</kbd>/<kbd>P</kbd> change channel · <kbd>F</kbd> fullscreen · <kbd>M</kbd> mute · <kbd>/</kbd> search · <kbd>G</kbd> TV guide</footer>
+
+<dialog id="guideDlg">
+  <form method="dialog" id="guideForm">
+    <h2>TV guide</h2>
+    <p class="note">Choose where the schedule comes from. Pick the guide that matches your playlist’s country; larger guides take longer to load on a phone.</p>
+    <fieldset id="fromPlaylist" hidden><legend>From this playlist</legend><div id="fromPlaylistItems"></div></fieldset>
+    <fieldset>
+      <legend>Country guides (epgshare01)</legend>
+      <label class="ck"><input type="checkbox" value="https://epgshare01.online/epgshare01/epg_ripper_US2.xml.gz"> United States</label>
+      <label class="ck"><input type="checkbox" value="https://epgshare01.online/epgshare01/epg_ripper_CA2.xml.gz"> Canada</label>
+      <label class="ck"><input type="checkbox" value="https://epgshare01.online/epgshare01/epg_ripper_UK1.xml.gz"> United Kingdom</label>
+      <label class="ck"><input type="checkbox" value="https://epgshare01.online/epgshare01/epg_ripper_AU1.xml.gz"> Australia</label>
+      <label class="ck"><input type="checkbox" value="https://epgshare01.online/epgshare01/epg_ripper_IN1.xml.gz"> India</label>
+      <label class="ck"><input type="checkbox" value="https://epgshare01.online/epgshare01/epg_ripper_US_SPORTS1.xml.gz"> US sports</label>
+    </fieldset>
+    <fieldset>
+      <legend>Streaming services (i.mjh.nz)</legend>
+      <label class="ck"><input type="checkbox" value="https://i.mjh.nz/PlutoTV/us.xml.gz"> Pluto TV (US)</label>
+      <label class="ck"><input type="checkbox" value="https://i.mjh.nz/SamsungTVPlus/us.xml.gz"> Samsung TV Plus (US)</label>
+      <label class="ck"><input type="checkbox" value="https://i.mjh.nz/Plex/us.xml.gz"> Plex (US)</label>
+    </fieldset>
+    <label style="display:flex;flex-direction:column;gap:6px;font-size:14px">Other XMLTV link (.xml or .xml.gz)
+      <input id="epgCustom" type="url" placeholder="https://example.com/guide.xml.gz">
+    </label>
+    <div class="row">
+      <button class="btn" value="cancel">Close</button>
+      <button class="btn" type="button" id="epgClear">Turn guide off</button>
+      <button class="btn primary" type="button" id="epgApply">Load guide</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const store = {
+    get(k, d){ try { const v = localStorage.getItem('sigiptv:'+k); return v ? JSON.parse(v) : d; } catch { return d; } },
+    set(k, v){ try { localStorage.setItem('sigiptv:'+k, JSON.stringify(v)); } catch {} }
+  };
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  let channels = [], view = [], current = null, tab = 'all', hls = null, wakeLock = null;
+  let playlistEpg = [];                    // guide links announced by the playlist header
+  let favs = store.get('favs', []);
+  let recent = store.get('recent', []);
+
+  // ---------- Network (native HTTP inside the Android app, so CORS never blocks playlists or guides) ----------
+  const Cap = window.Capacitor;
+  const native = !!(Cap && Cap.isNativePlatform && Cap.isNativePlatform() && Cap.Plugins && Cap.Plugins.CapacitorHttp);
+  async function getText(url){
+    if (native){
+      const r = await Cap.Plugins.CapacitorHttp.request({ url, method:'GET', responseType:'text', connectTimeout:20000, readTimeout:90000 });
+      if (r.status >= 400) throw new Error('HTTP ' + r.status);
+      return typeof r.data === 'string' ? r.data : JSON.stringify(r.data);
+    }
+    const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status); return r.text();
+  }
+  async function getBytes(url){
+    if (native){
+      const r = await Cap.Plugins.CapacitorHttp.request({ url, method:'GET', responseType:'arraybuffer', connectTimeout:20000, readTimeout:120000 });
+      if (r.status >= 400) throw new Error('HTTP ' + r.status);
+      if (typeof r.data !== 'string') return new TextEncoder().encode(JSON.stringify(r.data));
+      try { const bin = atob(r.data); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }
+      catch { return new TextEncoder().encode(r.data); }
+    }
+    const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status); return new Uint8Array(await r.arrayBuffer());
+  }
+  async function getXml(url){
+    const b = await getBytes(url);
+    if (b[0] === 0x1f && b[1] === 0x8b){
+      if (!('DecompressionStream' in window)) throw new Error('this device can’t unpack .gz guides');
+      return new Response(new Blob([b]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+    }
+    return new TextDecoder().decode(b);
+  }
+
+  // ---------- M3U parsing ----------
+  function parseM3U(text){
+    const out = [], lines = text.replace(/\r/g,'').split('\n');
+    let info = null, extGroup = '', header = '';
+    for (const raw of lines){
+      const line = raw.trim();
+      if (!line) continue;
+      if (line.startsWith('#EXTM3U')){ header = line; continue; }
+      if (line.startsWith('#EXTINF')){
+        const attrs = {};
+        line.replace(/([\w-]+)="([^"]*)"/g, (_, k, v) => { attrs[k.toLowerCase()] = v; });
+        const lastQuote = line.lastIndexOf('"');
+        const comma = line.indexOf(',', lastQuote > 0 ? lastQuote : 0);
+        const name = (comma >= 0 ? line.slice(comma+1) : '').trim() || attrs['tvg-name'] || 'Untitled';
+        info = { name, logo: attrs['tvg-logo'] || '', group: attrs['group-title'] || '', id: attrs['tvg-id'] || '', tvgName: attrs['tvg-name'] || '' };
+      } else if (line.startsWith('#EXTGRP:')){
+        extGroup = line.slice(8).trim();
+      } else if (line.startsWith('#')){
+        continue;
+      } else {
+        const ch = info || { name: line.split('/').pop() || line, logo:'', group:'', id:'', tvgName:'' };
+        if (!ch.group && extGroup) ch.group = extGroup;
+        ch.group = ch.group || 'Ungrouped';
+        ch.url = line;
+        out.push(ch);
+        info = null; extGroup = '';
+      }
+    }
+    const tvg = /(?:url-tvg|x-tvg-url)="([^"]*)"/i.exec(header);
+    const epgLinks = tvg ? tvg[1].split(',').map(s => s.trim()).filter(Boolean) : [];
+    return { channels: out, epgLinks };
+  }
+
+  // ---------- XMLTV (EPG) ----------
+  const epg = new Map();       // channel id (lowercase) -> [{s,e,t,d}]
+  const epgNames = new Map();  // normalized display name -> channel id (lowercase)
+  let epgVersion = 0;
+  const unx = s => s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/&(amp|lt|gt|quot|apos|#\d+|#x[0-9a-f]+);/gi, (m, e) => {
+    const k = e.toLowerCase();
+    if (k === 'amp') return '&'; if (k === 'lt') return '<'; if (k === 'gt') return '>'; if (k === 'quot') return '"'; if (k === 'apos') return "'";
+    return String.fromCodePoint(k[1] === 'x' ? parseInt(k.slice(2),16) : parseInt(k.slice(1),10));
+  }).trim();
+  const norm = s => String(s).toLowerCase().replace(/\(.*?\)|\[.*?\]/g,' ').replace(/\b(hd|fhd|uhd|4k|sd|hevc)\b/g,' ').replace(/[^a-z0-9]+/g,'');
+  function xmltvTime(s){
+    const m = /^(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)?\s*([+-]\d{4})?/.exec(s || '');
+    if (!m) return NaN;
+    let t = Date.UTC(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +(m[6]||0));
+    if (m[7]){ const sg = m[7][0] === '-' ? -1 : 1; t -= sg * ((+m[7].slice(1,3))*60 + (+m[7].slice(3,5))) * 60000; }
+    return t;
+  }
+  function parseXmltv(xml){
+    const now = Date.now(), lo = now - 3*3600e3, hi = now + 30*3600e3;
+    let m, added = 0;
+    const chRe = /<channel\b[^>]*\bid="([^"]*)"[^>]*>([\s\S]*?)<\/channel>/g;
+    while ((m = chRe.exec(xml))){
+      const id = unx(m[1]).toLowerCase(), dn = /<display-name[^>]*>([\s\S]*?)<\/display-name>/g; let d;
+      while ((d = dn.exec(m[2]))){ const k = norm(unx(d[1])); if (k && !epgNames.has(k)) epgNames.set(k, id); }
+    }
+    const pRe = /<programme\b([^>]*)>([\s\S]*?)<\/programme>/g;
+    while ((m = pRe.exec(xml))){
+      const a = m[1];
+      const s = xmltvTime((/\bstart="([^"]*)"/.exec(a) || [])[1]);
+      const e = xmltvTime((/\bstop="([^"]*)"/.exec(a) || [])[1]);
+      if (!(e > lo && s < hi)) continue;
+      const ch = unx((/\bchannel="([^"]*)"/.exec(a) || [])[1] || '').toLowerCase();
+      if (!ch) continue;
+      const t = /<title[^>]*>([\s\S]*?)<\/title>/.exec(m[2]);
+      const sub = /<sub-title[^>]*>([\s\S]*?)<\/sub-title>/.exec(m[2]);
+      const dsc = /<desc[^>]*>([\s\S]*?)<\/desc>/.exec(m[2]);
+      let title = t ? unx(t[1]) : 'Untitled';
+      if (sub) title += ' — ' + unx(sub[1]);
+      let d = dsc ? unx(dsc[1]) : '';
+      if (d.length > 320) d = d.slice(0, 317) + '…';
+      if (!epg.has(ch)) epg.set(ch, []);
+      epg.get(ch).push({ s, e: isNaN(e) ? s + 3600e3 : e, t: title, d });
+      added++;
+    }
+    return added;
+  }
+  function finishEpg(){
+    for (const [k, arr] of epg){
+      arr.sort((x, y) => x.s - y.s);
+      const out = []; for (const p of arr){ if (!out.length || out[out.length-1].s !== p.s) out.push(p); }
+      epg.set(k, out);
+    }
+    epgVersion++;
+  }
+  const gcache = new Map();
+  function guideFor(c){
+    const key = c.url + '|' + epgVersion;
+    if (gcache.has(key)) return gcache.get(key);
+    let list = null;
+    const ids = [c.id, (c.id || '').split('@')[0]].filter(Boolean).map(s => s.toLowerCase());
+    for (const id of ids){ if (epg.has(id)){ list = epg.get(id); break; } }
+    if (!list){
+      for (const n of [c.tvgName, c.name, (c.id||'').split('.')[0]]){
+        const id = n && epgNames.get(norm(n));
+        if (id && epg.has(id)){ list = epg.get(id); break; }
+      }
+    }
+    gcache.set(key, list);
+    return list;
+  }
+  function nowNext(c, n = 6){
+    const list = guideFor(c); if (!list) return null;
+    const t = Date.now();
+    const i = list.findIndex(p => p.e > t);
+    if (i < 0) return { now: null, next: [] };
+    const now = list[i].s <= t ? list[i] : null;
+    return { now, next: list.slice(now ? i+1 : i, (now ? i+1 : i) + n) };
+  }
+  const hm = t => new Date(t).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' });
+  const pct = p => Math.max(0, Math.min(100, (Date.now() - p.s) / (p.e - p.s) * 100));
+
+  let epgLoadId = 0;
+  async function loadGuide(urls){
+    const myId = ++epgLoadId;
+    epg.clear(); epgNames.clear(); gcache.clear(); epgVersion++;
+    if (!urls.length){ $('#gstat').textContent = 'TV guide: off'; render(); renderOnAir(); return; }
+    let ok = 0, fails = [];
+    for (const [i, u] of urls.entries()){
+      if (myId !== epgLoadId) return;
+      $('#gstat').textContent = `TV guide: loading ${i+1} of ${urls.length}…`;
+      try { const xml = await getXml(u); if (myId !== epgLoadId) return; parseXmltv(xml); ok++; }
+      catch (e){ fails.push(shortHost(u) + ' (' + (e.message || 'failed') + ')'); }
+    }
+    finishEpg(); gcache.clear();
+    const matched = channels.filter(c => guideFor(c)).length;
+    $('#gstat').textContent = `TV guide: ${matched.toLocaleString()} of ${channels.length.toLocaleString()} channels matched · updated ${hm(Date.now())}`
+      + (fails.length ? ` · couldn’t load ${fails.join(', ')}` + (native ? '' : ' — in a browser some guide servers block access; the Android app isn’t affected') : '');
+    render(); renderOnAir();
+  }
+  const shortHost = u => { try { const x = new URL(u); return x.hostname + x.pathname.split('/').pop().replace(/^/, '/'); } catch { return u; } };
+
+  // ---------- Playlist loading ----------
+  async function loadUrl(url){
+    setListMsg('Loading playlist…');
+    try {
+      const text = await getText(url);
+      useText(text, url);
+      store.set('lastSrc', url);
+    } catch (e){
+      setListMsg('Couldn’t load that playlist (' + e.message + '). Check the link, or download the .m3u and use “Open file”.' + (native ? '' : ' In a browser, some servers block access.'));
+      $('#count').textContent = '0 channels';
+    }
+  }
+  function useText(text, label){
+    if (!/#EXTM3U|#EXTINF|^https?:/m.test(text)){ setListMsg('That doesn’t look like an M3U playlist.'); return; }
+    const parsed = parseM3U(text);
+    channels = parsed.channels;
+    playlistEpg = parsed.epgLinks;
+    const groups = [...new Set(channels.map(c => c.group))].sort((a,b) => a.localeCompare(b));
+    $('#group').innerHTML = '<option value="">All groups</option>' + groups.map(g => `<option>${esc(g)}</option>`).join('');
+    $('#meta').textContent = 'Playlist: ' + label;
+    gcache.clear();
+    setTab('all');
+    startGuide();
+  }
+  // Which guides to load: the user's saved choice wins; otherwise the playlist's own guide when it lists just a few.
+  function startGuide(){
+    const saved = store.get('epgUrls', null);
+    if (saved) return loadGuide(saved);
+    const small = playlistEpg.filter(u => !/ALL_SOURCES/i.test(u));
+    if (small.length && small.length <= 3) return loadGuide(small);
+    $('#gstat').textContent = playlistEpg.length ? `TV guide: this playlist offers ${playlistEpg.length} guide sources. Open TV guide to choose.` : 'TV guide: off. Open TV guide to add one.';
+  }
+
+  // ---------- Channel list ----------
+  const isFav = c => favs.some(f => f.url === c.url);
+  function setListMsg(msg){ $('#list').innerHTML = `<li class="empty" style="display:block">${esc(msg)}</li>`; }
+
+  function render(){
+    const q = $('#q').value.trim().toLowerCase(), g = $('#group').value;
+    const base = tab === 'fav' ? favs : tab === 'recent' ? recent : channels;
+    view = base.filter(c => {
+      if (g && tab === 'all' && c.group !== g) return false;
+      if (!q) return true;
+      if (c.name.toLowerCase().includes(q) || c.group.toLowerCase().includes(q)) return true;
+      const nn = epg.size && nowNext(c, 0); return !!(nn && nn.now && nn.now.t.toLowerCase().includes(q));
+    });
+    $('#group').disabled = tab !== 'all';
+    $('#count').textContent = view.length.toLocaleString() + (view.length === 1 ? ' channel' : ' channels');
+    if (!view.length){
+      setListMsg(tab === 'fav' ? 'No favorites yet. Tap ☆ next to a channel to save it.' : tab === 'recent' ? 'Channels you watch will show up here.' : 'No channels match.');
+      return;
+    }
+    const LIMIT = 600;
+    const frag = document.createDocumentFragment();
+    view.slice(0, LIMIT).forEach((c, i) => {
+      const li = document.createElement('li');
+      if (current && current.url === c.url) li.className = 'on';
+      li.dataset.i = i;
+      const initials = c.name.replace(/[^A-Za-z0-9 ]/g,'').split(' ').filter(Boolean).slice(0,2).map(w => w[0]).join('').toUpperCase() || 'TV';
+      const nn = epg.size ? nowNext(c, 0) : null;
+      const sub = nn && nn.now
+        ? `<div class="gp"><span class="now">${esc(nn.now.t)}</span> · until ${hm(nn.now.e)}</div><div class="bar"><span style="width:${pct(nn.now).toFixed(1)}%"></span></div>`
+        : `<div class="gp">${esc(c.group)}</div>`;
+      li.innerHTML = `<div class="logo">${c.logo ? `<img loading="lazy" alt="" src="${esc(c.logo)}">` : esc(initials)}</div>
+        <div style="min-width:0"><div class="nm">${esc(c.name)}</div>${sub}</div>
+        <button class="star ${isFav(c) ? 'fav' : ''}" aria-label="${isFav(c) ? 'Remove from favorites' : 'Add to favorites'}">${isFav(c) ? '★' : '☆'}</button>`;
+      const img = li.querySelector('img');
+      if (img) img.onerror = () => { img.parentNode.textContent = initials; };
+      frag.appendChild(li);
+    });
+    if (view.length > LIMIT){
+      const li = document.createElement('li'); li.className = 'empty'; li.style.display = 'block';
+      li.textContent = `Showing the first ${LIMIT} of ${view.length.toLocaleString()}. Search or pick a group to narrow it down.`;
+      frag.appendChild(li);
+    }
+    $('#list').replaceChildren(frag);
+  }
+  function setTab(t){
+    tab = t;
+    document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === t));
+    render();
+  }
+
+  // ---------- On-air panel ----------
+  function renderOnAir(){
+    if (!current){ return; }
+    const nn = nowNext(current, 6);
+    if (!nn){
+      $('#nowBox').innerHTML = `<p class="prog-desc" style="margin:0">${epg.size ? 'No schedule found for this channel in the loaded guide.' : 'No TV guide loaded. Open TV guide to add one.'}</p>`;
+      $('#nextList').innerHTML = '<li style="display:block;color:var(--muted)">—</li>';
+      return;
+    }
+    $('#nowBox').innerHTML = nn.now
+      ? `<p class="prog-title">${esc(nn.now.t)}</p><div class="prog-time">${hm(nn.now.s)} – ${hm(nn.now.e)} · ${Math.max(0, Math.round((nn.now.e - Date.now())/60000))} min left</div>
+         <div class="bar"><span style="width:${pct(nn.now).toFixed(1)}%"></span></div>${nn.now.d ? `<p class="prog-desc">${esc(nn.now.d)}</p>` : ''}`
+      : '<p class="prog-desc" style="margin:0">Nothing scheduled right now.</p>';
+    $('#nextList').innerHTML = nn.next.length
+      ? nn.next.map(p => `<li><time>${hm(p.s)}</time><span>${esc(p.t)}</span></li>`).join('')
+      : '<li style="display:block;color:var(--muted)">Nothing else listed.</li>';
+  }
+
+  // ---------- Playback ----------
+  function status(text, cls){ const s = $('#status'); s.textContent = text; s.className = 'pill ' + (cls || ''); }
+  function overlay(html){ const o = $('#ov'); o.hidden = !html; if (html) o.innerHTML = `<div>${html}</div>`; }
+  async function keepAwake(){ try { wakeLock = await navigator.wakeLock?.request('screen'); } catch {} }
+
+  function play(c){
+    current = c;
+    const v = $('#v');
+    $('#title').textContent = c.name;
+    $('#meta').textContent = c.group + ' · ' + c.url;
+    updateFavBtn(); renderOnAir();
+    status('Tuning…'); overlay('<b>Tuning in…</b>' + esc(c.name));
+    if (hls){ hls.destroy(); hls = null; }
+    v.onerror = null; v.removeAttribute('src'); v.load();
+
+    const fail = msg => { status('Off air', 'err'); overlay('<b>Can’t play this channel</b>' + esc(msg) + '<br>Try the next one.'); };
+    const nativePlay = () => { v.onerror = () => fail('The stream is offline, geo-blocked, or in a format this device can’t play.'); v.src = c.url; v.play().catch(() => {}); };
+    const looksDirect = /\.(mp4|webm|mp3|aac|ogg)(\?|$)/i.test(c.url);
+
+    if (!looksDirect && window.Hls && Hls.isSupported()){
+      let triedNative = false;
+      hls = new Hls({ enableWorker: true, lowLatencyMode: true, manifestLoadingTimeOut: 15000 });
+      hls.on(Hls.Events.MANIFEST_PARSED, () => v.play().catch(() => {}));
+      hls.on(Hls.Events.ERROR, (_, d) => {
+        if (!d.fatal) return;
+        if (d.type === Hls.ErrorTypes.MEDIA_ERROR){ hls.recoverMediaError(); return; }
+        // Some servers refuse script access; the device's own player may still manage.
+        if (!triedNative && d.type === Hls.ErrorTypes.NETWORK_ERROR){ triedNative = true; hls.destroy(); hls = null; nativePlay(); return; }
+        fail('The stream format isn’t supported.');
+      });
+      hls.loadSource(c.url); hls.attachMedia(v);
+    } else {
+      nativePlay();
+    }
+    v.onplaying = () => { status('Live', 'live'); overlay(''); keepAwake(); };
+    v.onwaiting = () => status('Buffering…');
+
+    recent = [c, ...recent.filter(r => r.url !== c.url)].slice(0, 30);
+    store.set('recent', recent);
+    render();
+    const on = $('#list li.on'); if (on) on.scrollIntoView({ block: 'nearest' });
+  }
+  function step(d){
+    if (!view.length) return;
+    let i = current ? view.findIndex(c => c.url === current.url) : -1;
+    i = (i + d + view.length) % view.length;
+    play(view[i]);
+  }
+  function toggleFav(c){
+    favs = isFav(c) ? favs.filter(f => f.url !== c.url) : [...favs, c];
+    store.set('favs', favs); render(); updateFavBtn();
+  }
+  function updateFavBtn(){ $('#favBtn').textContent = current && isFav(current) ? '★ Favorited' : '☆ Favorite'; }
+
+  // ---------- Guide dialog ----------
+  function openGuide(){
+    const saved = store.get('epgUrls', null);
+    const active = new Set(saved || (playlistEpg.length <= 3 ? playlistEpg : []));
+    const fp = $('#fromPlaylistItems');
+    const offered = playlistEpg.filter(u => !/ALL_SOURCES/i.test(u)).slice(0, 120);
+    $('#fromPlaylist').hidden = !offered.length;
+    fp.innerHTML = offered.map(u => `<label class="ck"><input type="checkbox" value="${esc(u)}"> ${esc(shortHost(u))}</label>`).join('');
+    const known = new Set();
+    $('#guideForm').querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = active.has(cb.value); known.add(cb.value); });
+    $('#epgCustom').value = [...active].filter(u => !known.has(u)).join(', ');
+    const dlg = $('#guideDlg');
+    if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+  }
+  $('#epgApply').onclick = () => {
+    const urls = [...$('#guideForm').querySelectorAll('input[type=checkbox]:checked')].map(cb => cb.value);
+    $('#epgCustom').value.split(',').map(s => s.trim()).filter(s => /^https?:\/\//i.test(s)).forEach(u => urls.push(u));
+    const uniq = [...new Set(urls)];
+    store.set('epgUrls', uniq);
+    $('#guideDlg').close();
+    loadGuide(uniq);
+  };
+  $('#epgClear').onclick = () => { store.set('epgUrls', []); $('#guideDlg').close(); loadGuide([]); };
+
+  // ---------- Events ----------
+  $('#list').addEventListener('click', e => {
+    const li = e.target.closest('li[data-i]'); if (!li) return;
+    const c = view[+li.dataset.i];
+    if (e.target.closest('.star')) toggleFav(c); else play(c);
+  });
+  $('#q').addEventListener('input', render);
+  $('#group').addEventListener('change', render);
+  document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+  $('#prev').onclick = () => step(-1);
+  $('#next').onclick = () => step(1);
+  $('#favBtn').onclick = () => current && toggleFav(current);
+  $('#guideBtn').onclick = openGuide;
+  $('#preset').addEventListener('change', e => {
+    const custom = e.target.value === '__custom';
+    $('#customUrl').hidden = !custom;
+    if (custom) $('#customUrl').focus(); else loadUrl(e.target.value);
+  });
+  $('#loadBtn').onclick = () => {
+    const u = $('#preset').value === '__custom' ? $('#customUrl').value.trim() : $('#preset').value;
+    if (u) loadUrl(u);
+  };
+  $('#customUrl').addEventListener('keydown', e => { if (e.key === 'Enter') $('#loadBtn').click(); });
+  $('#fileIn').addEventListener('change', async e => {
+    const f = e.target.files[0]; if (!f) return;
+    useText(await f.text(), f.name); e.target.value = '';
+  });
+  document.addEventListener('keydown', e => {
+    if (e.target.matches('input,select,textarea') || $('#guideDlg').open) { if (e.key === 'Escape' && e.target.blur) e.target.blur(); return; }
+    const v = $('#v');
+    if (e.key === 'ArrowDown' || e.key === 'n' || e.key === 'N'){ e.preventDefault(); step(1); }
+    else if (e.key === 'ArrowUp' || e.key === 'p' || e.key === 'P'){ e.preventDefault(); step(-1); }
+    else if (e.key === 'f' || e.key === 'F'){ const p = document.fullscreenElement ? document.exitFullscreen() : $('.monitor').requestFullscreen?.(); p?.catch?.(() => {}); }
+    else if (e.key === 'm' || e.key === 'M'){ v.muted = !v.muted; }
+    else if (e.key === 'g' || e.key === 'G'){ openGuide(); }
+    else if (e.key === '/'){ e.preventDefault(); $('#q').focus(); }
+  });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && !$('#v').paused) keepAwake(); });
+  setInterval(() => { if (epg.size){ render(); renderOnAir(); } }, 60000);
+
+  // ---------- Start ----------
+  const last = store.get('lastSrc', null);
+  const opt = last && [...$('#preset').options].find(o => o.value === last);
+  if (last && !opt){ $('#preset').value = '__custom'; $('#customUrl').hidden = false; $('#customUrl').value = last; }
+  else if (opt) $('#preset').value = last;
+  loadUrl(last || $('#preset').value);
+
+  window.__signal = { parseM3U, parseXmltv, finishEpg, guideFor, nowNext, xmltvTime, epg }; // used by tests
+})();
+</script>
+</body>
+</html>
