@@ -90,8 +90,8 @@ video{width:100%;height:100%;display:block;background:var(--screen)}
 .prog-desc{font-size:14px;color:var(--muted);margin:8px 0 0;max-width:65ch}
 .onair .bar{height:4px;margin-top:8px}
 .sched{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
-.sched li{display:grid;grid-template-columns:4.2em 1fr;gap:10px;font-size:14px}
-.sched time{font:13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.sched li{display:grid;grid-template-columns:auto 1fr;gap:12px;font-size:14px}
+.sched time{font:13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;min-width:5.6em}
 .meta{font:12px var(--mono);color:var(--muted);word-break:break-all}
 .note{font-size:13px;color:var(--muted);max-width:70ch;margin:0}
 .gstat{font:12px var(--mono);color:var(--muted)}
