@@ -67,11 +67,18 @@ jobs:
       - name: Check for the upload key
         id: key
         run: |
+          echo "ready=true" >> "$GITHUB_OUTPUT"
           if [ -z "$KS_B64" ] || [ -z "$KS_PASS" ]; then
-            echo "::notice::Play build skipped: add the PLAY_KEYSTORE_B64 and PLAY_KEYSTORE_PASSWORD secrets (see PLAY_STORE.md)."
-            echo "ready=false" >> "$GITHUB_OUTPUT"
+            # No upload key yet: build with a throwaway key so the build is still tested,
+            # but don't publish that bundle (it can't be uploaded to Google Play).
+            echo "::warning::Upload key secrets not set yet. Building a TEST bundle only; add PLAY_KEYSTORE_B64 and PLAY_KEYSTORE_PASSWORD (see PLAY_STORE.md)."
+            P=$(openssl rand -hex 16)
+            keytool -genkeypair -keystore /tmp/t.jks -storetype PKCS12 -alias upload -keyalg RSA -keysize 2048 -validity 30 \
+              -storepass "$P" -keypass "$P" -dname "CN=Test" >/dev/null 2>&1
+            { echo "KS_PASS=$P"; echo "KS_B64=$(base64 -w0 /tmp/t.jks)"; } >> "$GITHUB_ENV"
+            echo "real=false" >> "$GITHUB_OUTPUT"
           else
-            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "real=true" >> "$GITHUB_OUTPUT"
           fi
 
       - uses: actions/setup-node@v4
@@ -143,14 +150,14 @@ jobs:
         run: jarsigner -verify -verbose:summary SignalIPTV-play.aab | tail -3
 
       - name: Upload .aab (Actions artifact)
-        if: steps.key.outputs.ready == 'true'
+        if: steps.key.outputs.real == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: SignalIPTV-play-aab
           path: SignalIPTV-play.aab
 
       - name: Attach .aab to the release
-        if: steps.key.outputs.ready == 'true'
+        if: steps.key.outputs.real == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
