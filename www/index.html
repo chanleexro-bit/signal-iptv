@@ -28,8 +28,8 @@
 [hidden]{display:none!important}
 html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--body);display:flex;flex-direction:column;
-  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
-  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  padding-top:var(--safe-area-inset-top,env(safe-area-inset-top,0px));padding-bottom:var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,var(--safe-area-inset-left,env(safe-area-inset-left,0px)));padding-right:max(16px,var(--safe-area-inset-right,env(safe-area-inset-right,0px)))}
 button,input,select{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 a{color:var(--accent)}
@@ -115,12 +115,12 @@ kbd{font:11px var(--mono);border:1px solid var(--line);border-radius:3px;padding
   <div class="brand"><i></i>Signal IPTV</div>
   <div class="src">
     <select id="preset" aria-label="Playlist">
-      <optgroup label="Free services (TV guide included)">
+      <!--full--><optgroup label="Free services (TV guide included)">
         <option value="https://i.mjh.nz/PlutoTV/us.m3u8">Pluto TV (US)</option>
         <option value="https://i.mjh.nz/SamsungTVPlus/us.m3u8">Samsung TV Plus (US)</option>
         <option value="https://i.mjh.nz/Plex/us.m3u8">Plex (US)</option>
         <option value="https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8">Free-TV (worldwide)</option>
-      </optgroup>
+      </optgroup><!--/full-->
       <optgroup label="By category (iptv-org)">
         <option value="https://iptv-org.github.io/iptv/categories/news.m3u">News</option>
         <option value="https://iptv-org.github.io/iptv/categories/sports.m3u">Sports</option>
@@ -198,7 +198,7 @@ kbd{font:11px var(--mono);border:1px solid var(--line);border-radius:3px;padding
 
     <div class="gstat" id="gstat">TV guide: not loaded</div>
     <div class="meta" id="meta"></div>
-    <p class="note">Channels come from public collections of free, legal broadcasts (<a href="https://github.com/iptv-org/iptv" target="_blank" rel="noopener">iptv-org</a>, <a href="https://github.com/Free-TV/IPTV" target="_blank" rel="noopener">Free-TV</a>, <a href="https://i.mjh.nz" target="_blank" rel="noopener">i.mjh.nz</a>). Some streams are offline or geo-blocked; if one fails, try the next channel.</p>
+    <!--full--><p class="note">Channels come from public collections of free, legal broadcasts (<a href="https://github.com/iptv-org/iptv" target="_blank" rel="noopener">iptv-org</a>, <a href="https://github.com/Free-TV/IPTV" target="_blank" rel="noopener">Free-TV</a>, <a href="https://i.mjh.nz" target="_blank" rel="noopener">i.mjh.nz</a>). Some streams are offline or geo-blocked; if one fails, try the next channel.</p><!--/full--><!--play:<p class="note">Built-in lists come from <a href="https://github.com/iptv-org/iptv" target="_blank" rel="noopener">iptv-org</a>, a public collection of links to freely available broadcasts. Signal IPTV doesn’t host or provide any channels. Some streams are offline or geo-blocked; if one fails, try the next channel.</p>-->
   </section>
 </main>
 
@@ -218,12 +218,12 @@ kbd{font:11px var(--mono);border:1px solid var(--line);border-radius:3px;padding
       <label class="ck"><input type="checkbox" value="https://epgshare01.online/epgshare01/epg_ripper_IN1.xml.gz"> India</label>
       <label class="ck"><input type="checkbox" value="https://epgshare01.online/epgshare01/epg_ripper_US_SPORTS1.xml.gz"> US sports</label>
     </fieldset>
-    <fieldset>
+    <!--full--><fieldset>
       <legend>Streaming services (i.mjh.nz)</legend>
       <label class="ck"><input type="checkbox" value="https://i.mjh.nz/PlutoTV/us.xml.gz"> Pluto TV (US)</label>
       <label class="ck"><input type="checkbox" value="https://i.mjh.nz/SamsungTVPlus/us.xml.gz"> Samsung TV Plus (US)</label>
       <label class="ck"><input type="checkbox" value="https://i.mjh.nz/Plex/us.xml.gz"> Plex (US)</label>
-    </fieldset>
+    </fieldset><!--/full-->
     <label style="display:flex;flex-direction:column;gap:6px;font-size:14px">Other XMLTV link (.xml or .xml.gz)
       <input id="epgCustom" type="url" placeholder="https://example.com/guide.xml.gz">
     </label>

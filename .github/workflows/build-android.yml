@@ -9,6 +9,7 @@ permissions:
   contents: write
 
 jobs:
+  # Full version (all playlists) as an APK for direct download from GitHub Releases.
   build:
     runs-on: ubuntu-latest
     steps:
@@ -52,3 +53,105 @@ jobs:
           tag_name: build-${{ github.run_number }}
           name: Signal IPTV build ${{ github.run_number }}
           files: SignalIPTV.apk
+
+  # Google Play version: iptv-org lists only, Android 16 target, signed .aab for the Play Console.
+  play:
+    runs-on: ubuntu-latest
+    needs: build
+    env:
+      KS_B64: ${{ secrets.PLAY_KEYSTORE_B64 }}
+      KS_PASS: ${{ secrets.PLAY_KEYSTORE_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for the upload key
+        id: key
+        run: |
+          if [ -z "$KS_B64" ] || [ -z "$KS_PASS" ]; then
+            echo "::notice::Play build skipped: add the PLAY_KEYSTORE_B64 and PLAY_KEYSTORE_PASSWORD secrets (see PLAY_STORE.md)."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.key.outputs.ready == 'true'
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        if: steps.key.outputs.ready == 'true'
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install packages (Capacitor 8, targets Android 16 / API 36)
+        if: steps.key.outputs.ready == 'true'
+        run: |
+          npm install
+          npm install @capacitor/core@^8 @capacitor/android@^8 @capacitor/cli@^8
+
+      - name: Make the Play version of the web app
+        if: steps.key.outputs.ready == 'true'
+        run: node scripts/play-variant.js www/index.html
+
+      - name: Create Android project and icons
+        if: steps.key.outputs.ready == 'true'
+        run: |
+          npm run android:init
+          npx cap sync android
+
+      - name: Set version, target SDK and signing
+        if: steps.key.outputs.ready == 'true'
+        run: |
+          VC=$(( 100 + ${{ github.run_number }} ))
+          sed -i -E "s/versionCode [0-9]+/versionCode $VC/; s/versionName \"[^\"]*\"/versionName \"1.0.${{ github.run_number }}\"/" android/app/build.gradle
+          sed -i -E "s/compileSdkVersion = [0-9]+/compileSdkVersion = 36/; s/targetSdkVersion = [0-9]+/targetSdkVersion = 36/" android/variables.gradle
+          sed -i -E 's/android:configChanges="([^"]*)"/android:configChanges="\1|density"/' android/app/src/main/AndroidManifest.xml
+          echo "$KS_B64" | base64 -d > android/app/upload.jks
+          cat >> android/app/build.gradle <<'EOF'
+
+          android {
+              signingConfigs {
+                  playUpload {
+                      storeFile file('upload.jks')
+                      storePassword System.getenv('KS_PASS')
+                      keyAlias 'upload'
+                      keyPassword System.getenv('KS_PASS')
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.playUpload
+                  }
+              }
+          }
+          EOF
+          echo "--- versions ---"; grep -E "versionCode|versionName" android/app/build.gradle; grep -E "SdkVersion" android/variables.gradle
+
+      - name: Build signed app bundle (.aab)
+        if: steps.key.outputs.ready == 'true'
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew bundleRelease --no-daemon
+          cp app/build/outputs/bundle/release/app-release.aab ../SignalIPTV-play.aab
+          rm -f app/upload.jks
+
+      - name: Verify signature
+        if: steps.key.outputs.ready == 'true'
+        run: jarsigner -verify -verbose:summary SignalIPTV-play.aab | tail -3
+
+      - name: Upload .aab (Actions artifact)
+        if: steps.key.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: SignalIPTV-play-aab
+          path: SignalIPTV-play.aab
+
+      - name: Attach .aab to the release
+        if: steps.key.outputs.ready == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          files: SignalIPTV-play.aab
