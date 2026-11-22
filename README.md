@@ -1,48 +1,51 @@
-# Signal IPTV for Android
+# Signal IPTV
 
-A live TV player for M3U playlists, with a TV guide (EPG) showing what's on now and next.
+A live TV, movies and series player for Android phones, tablets and Android TV. It plays the playlists and logins your provider gives you. Signal IPTV doesn't provide any channels or video content.
 
-## Get the APK, no coding needed (about 10 minutes)
+## Features
 
-GitHub builds the app for you for free.
+- **Playlists:** Xtream Codes login (server, username, password), M3U/M3U8 links, M3U files, and free public lists. Add as many as you like and switch between them. A `get.php` M3U link is turned into an Xtream login automatically.
+- **Live TV:** channel groups, favorites, recently watched, a filter box, and a channel info panel with what's on now, what's next and **catch-up** (replay past programmes when the provider offers it).
+- **TV guide (EPG):** the provider's schedule for each channel, an optional full XMLTV guide, and country guides for M3U playlists.
+- **Movies and Series:** poster grids with categories and sorting (recently added, A–Z, top rated, newest), detail pages with plot, cast and rating, seasons and episodes, **resume where you left off**, Continue watching, and automatic next episode.
+- **Player:** Android's Media3 (ExoPlayer) engine. Plays HLS, MPEG-TS, MP4 and MKV; audio track and subtitle choice; playback speed; ±10 s seek; picture size (fit, stretch, zoom); channel up/down while watching live TV; buffer size and user-agent settings.
+- **Android TV:** works with a TV remote (D-pad), appears in the Android TV launcher, and has a TV banner.
+- **Search** across channels, movies, series and shows on now; **backup and restore** of playlists and favorites; option to hide adult categories.
 
-1. Sign in at https://github.com (or create a free account).
-2. Create a new repository: click **+** → **New repository**, name it `signal-iptv`, and click **Create repository**.
-3. On the new repository page, click **uploading an existing file**. Drag in everything inside this folder, including the hidden `.github` folder, then click **Commit changes**.
-   - On a Mac, press Cmd+Shift+. in Finder to show hidden folders. On Windows, turn on View → Show → Hidden items.
-   - If dragging the `.github` folder doesn't work, click **Add file → Create new file**, type `.github/workflows/build-android.yml` as the name, paste in that file's contents, and commit.
-4. Open the **Actions** tab. A **Build Android APK** run starts automatically and takes about 5–8 minutes. If nothing happens, choose **Build Android APK → Run workflow**.
-5. When it finishes, open **Releases** on the repository's main page, either on your phone or on a computer. Download `SignalIPTV.apk`.
+## Get the APK
 
-## Install on your phone
+Every change pushed to this repository builds the app on GitHub (**Actions** tab, about 10 minutes).
 
-1. Open the downloaded `SignalIPTV.apk`.
-2. Android asks you to allow installs from your browser or file manager. Allow it, then tap **Install**.
-3. Play Protect may warn that the app is from an unknown developer. That's expected for an app you built yourself. Tap **Install anyway**.
+- Download `SignalIPTV.apk` from **Releases** and install it on your phone or Android TV box.
+- Play Protect may warn about an unknown developer, because the app isn't installed from Google Play. Tap **Install anyway**.
+- On Android TV, install with a file manager or the "Downloader" app, then find Signal IPTV in the TV's app row.
 
-Every new upload to the repository builds a fresh APK under Releases.
+`SignalIPTV-play.aab` in the same release is the Google Play edition (no extra free-service playlists), for upload in the Play Console.
 
-## Using the app
+## Build it yourself
 
-- **Playlists:** pick one from the menu (Pluto TV, Samsung TV Plus, Plex, Free-TV, or iptv-org by category, country or language). You can also paste any M3U link with "Custom M3U link…" or open a .m3u file.
-- **TV guide:** Pluto TV, Samsung TV Plus and Plex load their guide automatically. For iptv-org playlists, tap **TV guide** and tick the country guide that matches, such as United States or Canada. Larger guides can take 10–30 seconds to load on a phone.
-- **Favorites and Recent** are saved on the device.
-- Some free streams are offline or geo-blocked. If one fails, tap **Next**.
-
-## Build with Android Studio instead (optional)
-
-You need Node.js 20+, JDK 21 and Android Studio.
+You need Node.js 22, JDK 21 and the Android SDK.
 
 ```
-npm install
-npm run android:init
-npx cap sync android
-npm run android:open      # opens Android Studio → Run ▶ or Build → Build APK
+npm run build:android    # SignalIPTV.apk
+npm run build:play       # SignalIPTV-play.aab (needs KS_B64 and KS_PASS for signing)
 ```
 
-After editing `www/index.html`, run `npm run android:sync` again.
+The web app lives in `www/`; the native player plugin in `native/player/`; Android TV and version settings are applied by `scripts/patch-android.js`.
+
+## Testing without a provider
+
+`tools/mock-xtream/` is a fake Xtream Codes server with a made-up catalog, a TV guide, catch-up and test video:
+
+```
+sh tools/mock-xtream/make-media.sh     # once, needs ffmpeg
+python3 tools/mock-xtream/server.py 8099
+cd www && python3 -m http.server 8098   # then open http://127.0.0.1:8098
+```
+
+Log in with server `http://127.0.0.1:8099`, username `demo`, password `demo`.
 
 ## Notes
 
-- Only add playlists for content you have the right to watch.
-- The APK is a debug build signed with a test key. That's fine for your own devices; publishing on Google Play needs a release-signed build.
+- Only use playlists for content you have the right to watch.
+- Logins are stored only on the device and are sent only to the provider's server. See [PRIVACY.md](PRIVACY.md).

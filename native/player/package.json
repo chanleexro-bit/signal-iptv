@@ -1,0 +1,12 @@
+{
+  "name": "signal-native-player",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Full-screen Media3 (ExoPlayer) video player for Signal IPTV",
+  "main": "index.js",
+  "capacitor": {
+    "android": {
+      "src": "android"
+    }
+  }
+}

@@ -8,8 +8,7 @@
   },
   "android": {
     "allowMixedContent": true,
-    "adjustMarginsForEdgeToEdge": "force",
-    "backgroundColor": "#0f1115"
+    "backgroundColor": "#0e1014"
   },
   "plugins": {
     "CapacitorHttp": { "enabled": false }

@@ -1,21 +1,22 @@
 {
   "name": "signal-iptv",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "Signal IPTV – M3U live TV player with TV guide, packaged for Android with Capacitor",
+  "description": "Signal IPTV: live TV, movies and series player for M3U playlists and Xtream Codes logins, for Android phones and Android TV",
   "scripts": {
-    "copy-hls": "node -e \"require('fs').copyFileSync('node_modules/hls.js/dist/hls.min.js','www/hls.min.js')\"",
-    "android:init": "npm run copy-hls && npx cap add android && npx capacitor-assets generate --android --iconBackgroundColor '#0f1115' --iconBackgroundColorDark '#0f1115' --splashBackgroundColor '#0f1115' --splashBackgroundColorDark '#0f1115'",
-    "android:sync": "npm run copy-hls && npx cap sync android",
-    "android:open": "npx cap open android"
+    "build:android": "bash scripts/build-android.sh full",
+    "build:play": "bash scripts/build-android.sh play",
+    "mock": "python3 tools/mock-xtream/server.py 8099"
   },
   "dependencies": {
-    "@capacitor/android": "^7.0.0",
-    "@capacitor/core": "^7.0.0",
-    "hls.js": "^1.5.13"
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/app": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "hls.js": "^1.5.13",
+    "signal-native-player": "file:native/player"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
-    "@capacitor/cli": "^7.0.0"
+    "@capacitor/cli": "^8.0.0"
   }
 }
