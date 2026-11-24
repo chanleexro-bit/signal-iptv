@@ -1,29 +1,382 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Signal IPTV</title>
+<meta name="description" content="Signal IPTV 2.0: a free player for live TV, movies and series from M3U playlists and Xtream Codes logins, on Android phones, tablets and Android TV.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-:root{--bg:#0f1115;--fg:#e9ebf0;--muted:#9aa1af;--line:#272b34;--accent:#ff5a3f;color-scheme:dark}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:56px max(16px,env(safe-area-inset-left,0px))}
-main{max-width:62ch;margin:0 auto}
-h1{font-size:44px;line-height:1.05;margin:0 0 12px;letter-spacing:-.01em}
-.brand{display:flex;align-items:center;gap:10px;font-weight:800;margin-bottom:32px}
-.brand i{width:12px;height:12px;border-radius:50%;background:var(--accent)}
-p{color:var(--muted)} a{color:var(--accent)}
-.btn{display:inline-block;background:var(--accent);color:#140a08;font-weight:700;text-decoration:none;padding:12px 20px;border-radius:8px;margin:8px 0}
-footer{margin-top:48px;border-top:1px solid var(--line);padding-top:16px;font-size:14px}
+/* Layout: broadcast control room. A TV-guide band (time slots + moving NOW line) carries the feature overview; screenshots in device frames; one dark world, signal-red accent. */
+:root {
+  --bg: #0c0e12;
+  --panel: #14171d;
+  --raised: #1b1f27;
+  --line: #262b35;
+  --fg: #eef0f4;
+  --muted: #9aa2b1;
+  --dim: #68707f;
+  --signal: #ff5a3f;
+  --signal-ink: #1a0905;
+  --display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --gutter: max(20px, env(safe-area-inset-left, 0px));
+  --wrap: 1180px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation: none !important; transition: none !important; } }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 var(--body); -webkit-font-smoothing: antialiased; }
+img { max-width: 100%; display: block; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--signal); outline-offset: 3px; border-radius: 6px; }
+.wrap { max-width: var(--wrap); margin: 0 auto; padding-left: var(--gutter); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+.mono { font-family: var(--mono); }
+.eyebrow { font: 500 12px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--signal); margin: 0 0 14px; }
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; }
+h2 { font-size: clamp(30px, 4.2vw, 50px); font-weight: 800; font-stretch: 80%; line-height: 1; letter-spacing: -.01em; text-transform: uppercase; }
+h3 { font-size: 20px; font-weight: 700; font-stretch: 100%; line-height: 1.2; }
+p { margin: 0; }
+.lede { color: var(--muted); font-size: 18px; max-width: 60ch; }
+
+/* buttons */
+.btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; border-radius: 10px; font: 600 16px var(--body); text-decoration: none; border: 1px solid var(--line); background: var(--raised); color: var(--fg); white-space: nowrap; }
+.btn svg { width: 20px; height: 20px; flex: none; }
+.btn.primary { background: var(--signal); border-color: var(--signal); color: var(--signal-ink); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.soon { color: var(--muted); cursor: default; }
+.btn.soon small { font: 500 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line); }
+
+/* header */
+header.top { position: sticky; top: 0; z-index: 20; background: rgb(12 14 18 / .86); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); padding-top: env(safe-area-inset-top, 0px); }
+.top .wrap { display: flex; align-items: center; gap: 28px; height: 64px; }
+.logo { display: flex; align-items: center; gap: 10px; font: 800 20px var(--display); font-stretch: 115%; text-decoration: none; letter-spacing: -.01em; }
+.dot { width: 11px; height: 11px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 0 4px rgb(255 90 63 / .22); animation: pulse 2.4s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 7px rgb(255 90 63 / .08); } }
+.top nav { display: flex; gap: 22px; margin-left: auto; }
+.top nav a { color: var(--muted); text-decoration: none; font-weight: 500; font-size: 15px; }
+.top nav a:hover { color: var(--fg); }
+.top .btn { padding: 9px 16px; font-size: 14px; }
+@media (max-width: 820px) { .top nav { display: none; } .top .btn { margin-left: auto; } }
+
+/* hero */
+.hero { padding: 64px 0 36px; position: relative; overflow: hidden; }
+.hero::before { content: ""; position: absolute; inset: -20% -10% auto auto; width: 70vw; height: 70vw; max-width: 900px; max-height: 900px; background: radial-gradient(circle, rgb(255 90 63 / .16), transparent 62%); pointer-events: none; }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; position: relative; }
+.hero h1 { font-size: clamp(46px, 8.6vw, 112px); font-weight: 900; font-stretch: 72%; line-height: .9; letter-spacing: -.015em; text-transform: uppercase; max-width: 13ch; }
+.hero h1 .live { color: var(--signal); }
+.hero .lede { margin-top: 22px; font-size: 19px; }
+.hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+.hero-meta { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 18px; font: 13px var(--mono); color: var(--dim); }
+.hero-meta span::before { content: "■ "; color: var(--signal); font-size: 9px; vertical-align: 2px; }
+.tv { position: relative; margin-top: 10px; border-radius: 16px; padding: 10px; background: linear-gradient(180deg, #23262e, #121419); border: 1px solid #2f3440; box-shadow: 0 40px 90px -30px rgb(0 0 0 / .8), 0 0 0 1px rgb(0 0 0 / .6); }
+.tv img { border-radius: 8px; width: 100%; aspect-ratio: 1366 / 820; object-fit: cover; }
+.tv::after { content: ""; position: absolute; left: 50%; bottom: -26px; width: 26%; height: 16px; transform: translateX(-50%); border-radius: 0 0 10px 10px; background: linear-gradient(#1a1d23, #0f1115); }
+.caption { margin-top: 40px; text-align: right; font: 12px var(--mono); color: var(--dim); }
+
+/* guide band (the feature overview, as a TV guide) */
+.guide { padding: 70px 0 30px; }
+.guide-head { display: flex; align-items: end; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 26px; }
+.epg { position: relative; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--panel); }
+.epg-scroll { overflow-x: auto; }
+.epg-inner { min-width: 980px; position: relative; }
+.times { display: grid; grid-template-columns: 150px repeat(6, 1fr); border-bottom: 1px solid var(--line); font: 12px var(--mono); color: var(--dim); }
+.times div { padding: 10px 14px; border-left: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.times div:first-child { border-left: 0; }
+.row { display: grid; grid-template-columns: 150px repeat(6, 1fr); border-bottom: 1px solid var(--line); }
+.row:last-child { border-bottom: 0; }
+.ch { display: flex; align-items: center; gap: 10px; padding: 14px; font: 600 14px var(--body); border-right: 1px solid var(--line); background: var(--raised); }
+.ch b { font: 500 12px var(--mono); color: var(--dim); }
+.prog { margin: 6px 3px; padding: 12px 14px; border-radius: 8px; background: #1a1e26; border: 1px solid var(--line); min-width: 0; }
+.prog h3 { font-size: 16px; margin-bottom: 4px; }
+.prog p { font-size: 13.5px; color: var(--muted); line-height: 1.45; }
+.prog.on { background: linear-gradient(180deg, rgb(255 90 63 / .16), rgb(255 90 63 / .06)); border-color: rgb(255 90 63 / .45); }
+.prog.on h3::after { content: "ON NOW"; margin-left: 8px; font: 500 10px var(--mono); letter-spacing: .1em; color: var(--signal); vertical-align: 2px; }
+.now-line { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--signal); left: calc(150px + (100% - 150px) * var(--now, .34)); box-shadow: 0 0 12px rgb(255 90 63 / .8); pointer-events: none; animation: drift 40s linear infinite alternate; }
+.now-line::before { content: "NOW"; position: absolute; top: 7px; left: 6px; font: 600 10px var(--mono); letter-spacing: .1em; color: var(--signal); }
+@keyframes drift { from { --now: .30; left: calc(150px + (100% - 150px) * .30); } to { left: calc(150px + (100% - 150px) * .40); } }
+.span2 { grid-column: span 2; } .span3 { grid-column: span 3; }
+.scroll-hint { display: none; margin-top: 10px; font: 12px var(--mono); color: var(--dim); }
+@media (max-width: 1000px) { .scroll-hint { display: block; } }
+
+/* sections */
+section.block { padding: 90px 0; border-top: 1px solid var(--line); }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 56px; align-items: center; }
+.split.rev { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+.split.rev .copy { order: 2; }
+@media (max-width: 900px) { .split, .split.rev { grid-template-columns: minmax(0, 1fr); gap: 36px; } .split.rev .copy { order: 0; } }
+.copy .lede { margin-top: 16px; }
+.shot { border-radius: 12px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 30px 70px -30px rgb(0 0 0 / .8); }
+
+.ways { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 40px; }
+.way { padding: 22px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
+.way svg { width: 28px; height: 28px; color: var(--signal); }
+.way p { color: var(--muted); font-size: 15px; }
+.way code { font: 12.5px var(--mono); color: var(--fg); background: var(--raised); padding: 1px 6px; border-radius: 5px; }
+
+.specs { list-style: none; margin: 28px 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); border-top: 1px solid var(--line); }
+.specs li { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 16px; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+.specs li span:first-child { font: 500 12.5px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--dim); padding-top: 2px; }
+@media (max-width: 520px) { .specs li { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+
+.devices { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr); gap: 22px; margin-top: 44px; align-items: end; }
+.devices figure { margin: 0; }
+.devices figcaption { margin-top: 14px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.devices figcaption b { font: 700 18px var(--display); }
+.devices figcaption span { color: var(--muted); font-size: 14px; }
+.phones { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.phone { border-radius: 22px; padding: 6px; background: #1c1f26; border: 1px solid #30353f; }
+.phone img { border-radius: 17px; aspect-ratio: 412 / 900; object-fit: cover; }
+@media (max-width: 760px) { .devices { grid-template-columns: minmax(0, 1fr); } .phones { max-width: 420px; } }
+.platforms { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 34px; }
+.pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); font-size: 14px; color: var(--muted); }
+.pill.yes { color: var(--fg); border-color: rgb(255 90 63 / .45); }
+.pill.yes::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--signal); }
+.pill small { font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--dim); }
+
+.steps { list-style: none; counter-reset: s; margin: 40px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px; }
+.steps li { counter-increment: s; padding: 24px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
+.steps li::before { content: "0" counter(s); display: block; font: 900 46px var(--display); font-stretch: 70%; color: var(--signal); line-height: 1; margin-bottom: 14px; }
+.steps p { color: var(--muted); font-size: 15px; margin-top: 8px; }
+
+.download { text-align: left; }
+.dl-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 30px; align-items: center; padding: 40px; border-radius: 18px; background: radial-gradient(120% 140% at 100% 0%, rgb(255 90 63 / .2), transparent 55%), var(--panel); border: 1px solid rgb(255 90 63 / .3); }
+.dl-card h2 { font-size: clamp(34px, 5vw, 60px); }
+.dl-actions { display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
+.dl-meta { font: 12.5px var(--mono); color: var(--dim); margin-top: 16px; }
+@media (max-width: 760px) { .dl-card { grid-template-columns: minmax(0, 1fr); padding: 28px 22px; } }
+
+.faq { margin-top: 36px; border-top: 1px solid var(--line); max-width: 860px; }
+.faq details { border-bottom: 1px solid var(--line); }
+.faq summary { cursor: pointer; list-style: none; padding: 20px 40px 20px 0; position: relative; font: 600 18px var(--body); }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; position: absolute; right: 6px; top: 16px; font: 400 26px var(--mono); color: var(--signal); transition: transform .2s; }
+.faq details[open] summary::after { transform: rotate(45deg); }
+.faq details p { padding: 0 0 20px; color: var(--muted); max-width: 70ch; }
+
+footer { border-top: 1px solid var(--line); padding: 40px 0 calc(40px + env(safe-area-inset-bottom, 0px)); color: var(--dim); font-size: 14px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 18px 30px; align-items: center; }
+footer nav { display: flex; gap: 20px; flex-wrap: wrap; margin-left: auto; }
+footer a { color: var(--muted); }
+footer .disc { flex-basis: 100%; font-size: 13px; max-width: 80ch; }
 </style>
 </head>
 <body>
-<main>
-  <div class="brand"><i></i>Signal IPTV</div>
-  <h1>Live TV from M3U playlists, with a TV guide.</h1>
-  <p>Signal IPTV plays live channels from M3U playlists you choose and shows what’s on now and next. No account, no subscription.</p>
-  <a class="btn" href="https://github.com/chanleexro-bit/signal-iptv/releases/latest">Download for Android</a>
-  <footer><a href="privacy.html">Privacy Policy</a> · <a href="https://github.com/chanleexro-bit/signal-iptv">Source code</a> · Signal IPTV doesn’t host or provide any channels.</footer>
+
+<header class="top">
+  <div class="wrap">
+    <a class="logo" href="#top"><span class="dot"></span>Signal IPTV</a>
+    <nav aria-label="Sections">
+      <a href="#guide">Features</a><a href="#player">Player</a><a href="#devices">Devices</a><a href="#install">Install</a><a href="#faq">FAQ</a>
+    </nav>
+    <a class="btn primary" href="https://github.com/chanleexro-bit/signal-iptv/releases/latest/download/SignalIPTV.apk">Download</a>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <p class="eyebrow">Version 2.0 · Android, tablets &amp; Android TV</p>
+        <h1>Your playlist, <span class="live">live</span> on every screen.</h1>
+        <p class="lede">Signal IPTV plays live TV, movies and series from your M3U playlist or Xtream Codes login, with a built-in TV guide, catch-up and resume where you left off.</p>
+        <div class="hero-cta">
+          <a class="btn primary" href="https://github.com/chanleexro-bit/signal-iptv/releases/latest/download/SignalIPTV.apk">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16"/></svg>Download for Android</a>
+          <span class="btn soon" aria-disabled="true">Google Play <small>Coming soon</small></span>
+        </div>
+        <div class="hero-meta"><span>Free</span><span>No account</span><span>No ads</span><span>Phones, tablets, TV boxes</span></div>
+      </div>
+      <div class="tv"><img src="img/live-desktop.webp" alt="Signal IPTV's Live TV screen: channel groups, a channel list with logos, and the selected channel's current show, schedule and catch-up list" width="1366" height="820"></div>
+      <p class="caption">Screens show sample channels from a test provider.</p>
+    </div>
+  </section>
+
+  <section class="guide" id="guide" aria-labelledby="guide-h">
+    <div class="wrap">
+      <div class="guide-head">
+        <div><p class="eyebrow">What’s on in 2.0</p><h2 id="guide-h">Everything an IPTV player should do</h2></div>
+        <p class="lede" style="max-width:42ch">Laid out the way you already read TV: by channel, by time slot.</p>
+      </div>
+      <div class="epg">
+        <div class="epg-scroll" tabindex="0" aria-label="Feature guide">
+          <div class="epg-inner">
+            <div class="times" aria-hidden="true"><div>Channel</div><div>19:00</div><div>19:30</div><div>20:00</div><div>20:30</div><div>21:00</div><div>21:30</div></div>
+            <div class="row">
+              <div class="ch"><b>101</b>Live TV</div>
+              <div class="prog span2"><h3>Channel groups</h3><p>Categories, favorites, recently watched and a quick filter.</p></div>
+              <div class="prog on span2"><h3>What’s on now</h3><p>Now, next and a progress bar for every channel with a guide.</p></div>
+              <div class="prog span2"><h3>Catch-up</h3><p>Replay shows from the last days when your provider keeps them.</p></div>
+            </div>
+            <div class="row">
+              <div class="ch"><b>102</b>Movies</div>
+              <div class="prog span3"><h3>Poster library</h3><p>Browse by category, sort by recently added, A–Z, rating or release year.</p></div>
+              <div class="prog span3"><h3>Resume &amp; continue watching</h3><p>Stop anytime. Signal picks up at the same second, on the same device.</p></div>
+            </div>
+            <div class="row">
+              <div class="ch"><b>103</b>Series</div>
+              <div class="prog span2"><h3>Seasons &amp; episodes</h3><p>Plot, cast and episode lists with watched marks.</p></div>
+              <div class="prog span2"><h3>Next episode</h3><p>Plays the following episode automatically.</p></div>
+              <div class="prog span2"><h3>Search</h3><p>Find channels, movies, series and shows on now.</p></div>
+            </div>
+            <div class="row">
+              <div class="ch"><b>104</b>Playlists</div>
+              <div class="prog span2"><h3>Xtream Codes</h3><p>Server, username and password, with account expiry shown.</p></div>
+              <div class="prog span2"><h3>M3U links &amp; files</h3><p>Plus free public channel lists to try it out.</p></div>
+              <div class="prog span2"><h3>Backup &amp; restore</h3><p>Move playlists and favorites to another device.</p></div>
+            </div>
+            <div class="now-line" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
+      <p class="scroll-hint">Swipe the guide sideways to see every slot →</p>
+    </div>
+  </section>
+
+  <section class="block" aria-labelledby="ways-h">
+    <div class="wrap">
+      <p class="eyebrow">Add your playlist</p>
+      <h2 id="ways-h">Three ways in, one minute each</h2>
+      <p class="lede" style="margin-top:16px">Use the details your TV provider sent you. Signal works out the rest, and loads movies and series too when your login includes them.</p>
+      <div class="ways">
+        <div class="way">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8M17 6l3 3M14.5 8.5l2 2"/></svg>
+          <h3>Xtream Codes login</h3>
+          <p>Enter the server address, username and password. Live TV, movies, series, catch-up and the provider’s TV guide all come from one login.</p>
+        </div>
+        <div class="way">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
+          <h3>M3U playlist link</h3>
+          <p>Paste a link ending in <code>.m3u</code> or <code>.m3u8</code>. A <code>get.php</code> link is switched to an Xtream login automatically.</p>
+        </div>
+        <div class="way">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M9 14h6M9 17h4"/></svg>
+          <h3>Playlist file</h3>
+          <p>Open an M3U file saved on your device. Add an XMLTV guide link for what’s on now and next.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="player" aria-labelledby="player-h">
+    <div class="wrap split">
+      <div class="copy">
+        <p class="eyebrow">The player</p>
+        <h2 id="player-h">Built on Android’s own video engine</h2>
+        <p class="lede">Signal 2.0 plays through Media3, the same engine behind most Android video apps. It opens the stream formats IPTV providers actually use, and it doesn’t need the provider’s permission to play in a web page.</p>
+        <ul class="specs">
+          <li><span>Formats</span><span>HLS (.m3u8), MPEG-TS (.ts), MP4, MKV</span></li>
+          <li><span>Audio</span><span>Choose the audio track or language</span></li>
+          <li><span>Subtitles</span><span>Turn on embedded subtitles in any available language</span></li>
+          <li><span>Controls</span><span>Pause, ±10 s seek, speed from 0.5× to 2×</span></li>
+          <li><span>Picture</span><span>Fit, stretch or zoom to fill the screen</span></li>
+          <li><span>Live TV</span><span>Channel up and down without leaving the player</span></li>
+          <li><span>Tuning</span><span>Buffer size and a custom user agent for picky providers</span></li>
+        </ul>
+      </div>
+      <div class="shot"><img src="img/movie-detail.webp" alt="A movie page in Signal IPTV with poster, rating, Play and Favorite buttons, plot and cast" width="1100" height="436"></div>
+    </div>
+  </section>
+
+  <section class="block" aria-labelledby="series-h">
+    <div class="wrap split rev">
+      <div class="copy">
+        <p class="eyebrow">Movies &amp; series</p>
+        <h2 id="series-h">Pick up exactly where you stopped</h2>
+        <p class="lede">Each movie and episode remembers its position. Continue watching sits at the top of the library, finished episodes get a check mark, and the next one starts on its own.</p>
+      </div>
+      <div class="shot"><img src="img/series.webp" alt="A series page in Signal IPTV with season buttons and an episode list showing durations" width="1100" height="723"></div>
+    </div>
+  </section>
+
+  <section class="block" id="devices" aria-labelledby="devices-h">
+    <div class="wrap">
+      <p class="eyebrow">Devices</p>
+      <h2 id="devices-h">One app, couch to commute</h2>
+      <p class="lede" style="margin-top:16px">On a TV, every screen works with the arrow keys and OK button of your remote, and Signal appears in the Android TV app row. On a phone, sections move to a tab bar at the bottom.</p>
+      <div class="devices">
+        <figure>
+          <div class="tv"><img src="img/tv-live.webp" alt="Signal IPTV on a TV, with a channel highlighted by the remote’s focus" width="1280" height="720" style="aspect-ratio:16/9"></div>
+          <figcaption style="margin-top:40px"><b>Android TV &amp; TV boxes</b><span>Remote control, TV launcher icon</span></figcaption>
+        </figure>
+        <figure>
+          <div class="phones">
+            <div class="phone"><img src="img/phone-live.webp" alt="Signal IPTV live channel list on a phone" width="412" height="900"></div>
+            <div class="phone"><img src="img/phone-movies.webp" alt="Signal IPTV movie posters on a phone" width="412" height="900"></div>
+          </div>
+          <figcaption><b>Phones &amp; tablets</b><span>Android 7.0 or newer</span></figcaption>
+        </figure>
+      </div>
+      <div class="platforms" aria-label="Platforms">
+        <span class="pill yes">Android phones</span><span class="pill yes">Android tablets</span><span class="pill yes">Android TV &amp; Google TV</span>
+        <span class="pill">Google Play <small>Coming soon</small></span><span class="pill">Samsung &amp; LG TVs <small>Not yet</small></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="install" aria-labelledby="install-h">
+    <div class="wrap">
+      <p class="eyebrow">Install</p>
+      <h2 id="install-h">Watching in three steps</h2>
+      <ol class="steps">
+        <li><h3>Download the app</h3><p>Get <span class="mono">SignalIPTV.apk</span> on your phone or TV box. On Android TV, the free Downloader app can fetch it from the link below.</p></li>
+        <li><h3>Allow the install</h3><p>Open the file and allow installs from your browser or file manager. If Play Protect asks, tap Install anyway; the app isn’t from the Play Store yet.</p></li>
+        <li><h3>Add your playlist</h3><p>Choose Xtream Codes, M3U link or file, enter what your provider sent you, and your channels appear.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="block download" aria-labelledby="dl-h">
+    <div class="wrap">
+      <div class="dl-card">
+        <div>
+          <p class="eyebrow">Free download</p>
+          <h2 id="dl-h">Get Signal IPTV 2.0</h2>
+          <p class="lede" style="margin-top:14px">One APK for phones, tablets and Android TV. Updates install over the old version.</p>
+          <p class="dl-meta">Android 7.0+ · about 5 MB · no account · no ads</p>
+        </div>
+        <div class="dl-actions">
+          <a class="btn primary" href="https://github.com/chanleexro-bit/signal-iptv/releases/latest/download/SignalIPTV.apk">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16"/></svg>Download APK</a>
+          <a class="btn" href="https://github.com/chanleexro-bit/signal-iptv/releases">All versions</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="faq" aria-labelledby="faq-h">
+    <div class="wrap">
+      <p class="eyebrow">Questions</p>
+      <h2 id="faq-h">Before you install</h2>
+      <div class="faq">
+        <details open><summary>Does Signal IPTV come with channels?</summary><p>No. Signal is a player. It plays the playlists and logins you get from your TV provider, plus free public lists of channels that broadcasters stream openly. Only use playlists for content you have the right to watch.</p></details>
+        <details><summary>Is it really free?</summary><p>Yes. There’s no subscription, no account and no ads.</p></details>
+        <details><summary>Where is my provider login stored?</summary><p>Only on your device. Signal sends your username and password to the server you entered and nowhere else. The privacy policy has the details.</p></details>
+        <details><summary>Which login types work?</summary><p>Xtream Codes (server, username, password), M3U and M3U8 links, M3U files, and get.php links. Stalker portal (MAC address) logins aren’t supported.</p></details>
+        <details><summary>Does catch-up work with every provider?</summary><p>Catch-up appears on channels where your provider keeps past programmes, marked with a Catch-up tag. Pick a programme from the channel’s schedule to replay it.</p></details>
+        <details><summary>Can I use it on Android TV or a TV box?</summary><p>Yes. Install the same APK. Every screen works with the remote’s arrow keys, OK and Back buttons, and up and down change channel while you watch.</p></details>
+        <details><summary>A channel won’t play. What can I try?</summary><p>Some streams are offline or limited to certain countries. Try the next channel. If none of your provider’s live channels start, go to Settings and switch the Xtream live format to MPEG-TS, or set the user agent your provider recommends.</p></details>
+        <details><summary>What about Samsung, LG or iPhone?</summary><p>Not yet. Signal 2.0 runs on Android devices, including Android TV and Google TV.</p></details>
+      </div>
+    </div>
+  </section>
 </main>
+
+<footer>
+  <div class="wrap">
+    <a class="logo" href="#top" style="font-size:17px"><span class="dot"></span>Signal IPTV</a>
+    <span>© 2026 Luxsit Entertainment</span>
+    <nav aria-label="Footer">
+      <a href="https://github.com/chanleexro-bit/signal-iptv/blob/main/PRIVACY.md">Privacy policy</a>
+      <a href="https://github.com/chanleexro-bit/signal-iptv">Source code</a>
+      <a href="https://github.com/chanleexro-bit/signal-iptv/issues">Support</a>
+    </nav>
+    <p class="disc">Signal IPTV is a media player and doesn’t host, provide or sell any TV channels or video content. Channel names in the screenshots are made up. Android and Google Play are trademarks of Google LLC.</p>
+  </div>
+</footer>
 </body>
 </html>
